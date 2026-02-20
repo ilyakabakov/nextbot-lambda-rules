@@ -12,7 +12,7 @@
 
 4 Вставить ссылку на репозиторий:
 ```
-placeholder
+https://github.com/ilyakabakov/nextbot-lambda-rules.git
 ```
 
 5 Нажать Done
