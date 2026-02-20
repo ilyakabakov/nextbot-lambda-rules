@@ -1,0 +1,111 @@
+---
+description: 
+Правила генерации скрипта python-функции для NextBot
+globs: **/*.{py}
+alwaysApply: false
+
+# Важно:
+
+## При генерации python скриптов: 
+
+### 1. Использовать только эти библиотеки, они определены в safe_globals и дополнительно импортировать их в скрипт не нужно:
+```
+    import json
+	import requests
+	import re
+	import base64
+	import math
+	import datetime
+	import time
+	import random
+	import decimal
+	import statistics
+	import urllib.parse
+	import gspread
+	import smtplib
+	import ssl
+	from email.mime.text import MIMEText
+	from oauth2client.service_account import ServiceAccountCredentials
+	from supabase import create_client, Client
+```
+
+### 2. Запрещено:
+	- использование дандерметодов
+	- использование аннотаций типов
+	- декларация функций и переменных с нижним подчеркиванием вначале или в конце.
+	- использование datetime.strptime("%m/%d;%Y"), это вызовет ошибку
+	- создание клиента supabase как create_client(supabase_url, supabase_key)
+	- декарация классов
+
+### 3. Всегда проверять наличие вложенных дандерметодов из RestrictedPython(
+		from RestrictedPython import compile_restricted
+		from RestrictedPython.Guards import guarded_iter_unpack_sequence
+		from RestrictedPython.Guards import safer_getattr
+		from RestrictedPython.Eval import default_guarded_getitem
+		from RestrictedPython.Eval import default_guarded_getiter
+		from RestrictedPython.Guards import full_write_guard
+		from RestrictedPython.PrintCollector import PrintCollector
+		) при использовании разрешенных библиотек, чтобы избежать ошибки по __import__.
+
+### 3.1 Использование конструкций try/except
+
+- `try` должен быть **минимальным по объёму**:  
+  оборачивать **только те строки**, которые реально могут выбросить исключение.  
+  Большие или глубоко вложенные `try` ухудшают читаемость и сопровождение кода.
+
+- Исключения должны быть **максимально конкретными**.  
+  Использование `except Exception` допускается только как крайняя мера.
+
+- **Читаемость важнее всего**.  
+  Код должен позволять быстро понять:
+  где может произойти ошибка и как она обрабатывается.
+
+- Когда вложенные `try/except` допустимы:
+  - разные уровни обрабатывают **разные классы ошибок**
+  - каждый `except` имеет **чёткую и единственную ответственность**
+  - отказ от вложенности делает код менее понятным или более хрупким
+
+- Пример допустимого сценария:
+  - внешний `try` — бизнес-логика
+  - внутренний `try` — сетевой запрос, парсинг или работа с внешним API
+
+- Когда это считается плохой практикой:
+  - `try` внутри `try` внутри `try` без явной необходимости
+  - одинаковые `except Exception` на разных уровнях
+  - использование исключений для управления логикой выполнения
+  - невозможно однозначно определить место возникновения ошибки
+
+
+### 4. Вместо print() всегда используем debug(text)
+
+### 5. Клиент supabase создается как обращение к supabase в safe_globals с передачей туда ссылки на бд и ключа, то есть 
+	sb = supabase["create_client"](supabase_url, supabase_key)
+
+### 6. Входящие данные определены в словаре args, если пользователь просит сгенерировать скрипт принирмающий name, phone, date значит это будут соответствующие ключи в словаре args.
+
+### 7. Константы, credentials и прочие данные окружения: выносятся всегда в начало скрипта.
+
+### 8. Допускается декларация функций, но только там где это действительно нужно:
+	- повторяющаяся валидация
+	- несколько независимых шагов
+	- один и тот же код вызывается ≥2 раз
+
+### 9. Результат всегда добавляется в словарь result, пример: 
+	- в случае успешного выполнения скрипта:
+		```
+		result = {
+			"status": "success",
+			"processed_data": data
+		}```
+	- в случае ошибки:
+		```
+		result = {
+			"status": "error",
+			"message": text_of_error
+		}
+
+		```
+### 10. Соблюдать DRY и PEP8, спагетти код не приемлем.
+
+
+
