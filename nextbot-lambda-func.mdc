@@ -1,8 +1,8 @@
 ---
 description: Правила генерации скрипта python-функции для NextBot
-globs: **/*.{py}
+globs: **/*.py
 alwaysApply: false
-
+---
 # Важно:
 
 ## При генерации python скриптов:
