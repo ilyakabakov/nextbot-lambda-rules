@@ -85,6 +85,29 @@ alwaysApply: false
 
 ### 3.2 В скриптах не использовать распаковку возврата функции в несколько переменных в одном присваивании (например a, b = func())
 
+### 3.3 Запрещено возвращать кортежи из функций (явные и неявные)
+- `return value, None` и `return None, error_dict` — запрещены
+- Функция всегда возвращает **один объект**: либо данные, либо error-словарь
+- Для разграничения "успех / ошибка" используй словарь-обёртку `{"ok": True/False, ...}`:
+
+```python
+# ЗАПРЕЩЕНО
+return product_id, None
+return None, {"status": "error", "message": "..."}
+
+# ПРАВИЛЬНО — обёртка с ok-флагом
+return {"ok": True, "data": product_id}
+return {"ok": False, "error": "сообщение об ошибке"}
+```
+
+- Проверка результата в вызывающем коде:
+```python
+res = some_func()
+if not res["ok"]:
+    result = {"status": "error", "message": res["error"]}
+# дальше используем res["data"]
+```
+
 ### 4. Вместо print() всегда используем debug(text)
 
 ### 5. Клиент supabase создается как обращение к supabase в safe_globals с передачей туда ссылки на бд и ключа, то есть 
@@ -125,37 +148,45 @@ alwaysApply: false
 # === КОНСТАНТЫ (всегда в начале) ===
 SUPABASE_URL, SUPABASE_KEY, MOYSKLAD_BASE_URL, MOYSKLAD_TOKEN
 
-# === ФУНКЦИИ (одна ответственность) ===
+# === ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ (одна ответственность) ===
 
 validate_args():
-    если нет args["text"]  → return error_dict
-    если нет args["name"]  → return error_dict
-    если нет args["phone"] → return error_dict
-    return None
+    если нет args["text"]  → return {"ok": False, "error": "..."}
+    если нет args["name"]  → return {"ok": False, "error": "..."}
+    если нет args["phone"] → return {"ok": False, "error": "..."}
+    return {"ok": True}
 
 search_supabase(q):
-    sb = клиент Supabase
-    попытка: rpc("search", {"q": q})
-    при ошибке → return (None, error_dict)
-    если ответ пустой / нет product_id → return (None, error_dict)
-    return (product_id, None)
+    sb = supabase["create_client"](SUPABASE_URL, SUPABASE_KEY)
+    попытка: rpc("search", {"q": q}).execute()
+    при ошибке → return {"ok": False, "error": "..."}
+    если ответ пустой / нет product_id → return {"ok": False, "error": "..."}
+    return {"ok": True, "data": product_id}
 
 create_order_moysklad(product_id, name, phone):
     headers = авторизация МойСклад
     GET организация → organization_meta
-    при ошибке / нет организаций → return error_dict
-    POST контрагент (name, phone) → counterparty, agent_meta
-    при ошибке → return error_dict
+    при ошибке / нет организаций → return {"ok": False, "error": "..."}
+    POST контрагент (name, phone) → agent_meta
+    при ошибке → return {"ok": False, "error": "..."}
     POST заказ (organization_meta, agent_meta, позиция по product_id)
-    при ошибке → return error_dict
-    return success_dict с processed_data
+    при ошибке → return {"ok": False, "error": "..."}
+    return {"ok": True, "data": order_data}
 
-# === ОСНОВНОЙ ПОТОК (без дублирования условия) ===
-result = validate_args()
-если result is None:
+# === ГЛАВНАЯ ФУНКЦИЯ — весь основной поток здесь ===
+# Использует early return как guard clause — никакого дублирования условий
+def run():
+    val = validate_args()
+    если не val["ok"] → return {"status": "error", "message": val["error"]}
+
     search_res = search_supabase(args["text"])
-    если search_res[1] не None:
-        result = search_res[1]
-    иначе:
-        result = create_order_moysklad(search_res[0], args["name"], args["phone"])
+    если не search_res["ok"] → return {"status": "error", "message": search_res["error"]}
+
+    order_res = create_order_moysklad(search_res["data"], args["name"], args["phone"])
+    если не order_res["ok"] → return {"status": "error", "message": order_res["error"]}
+
+    return {"status": "success", "processed_data": order_res["data"]}
+
+# === ТОЧКА ВХОДА ===
+result = run()
 ```

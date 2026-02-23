@@ -4,20 +4,15 @@
 
 ## Для конкретного проекта:
 
-1 Перейти в **Preferences --> Cursor Settings --> Rules, Skills, Subagents --> Имя проекта(вкладка)** 
+1 Создать директорию  ``` .cursor/rules/ ``` в корне проекта
 
-2 В поле **Rules** нажать **+ NEW**
+2 Скопировать файл ```nextbot-lambda-func.mdc``` в директорию  ``` .cursor/rules/ ```
 
-3 Выбрать  **Add from GitHub**
+3 Создать python файл в корне проекта
 
-4 Вставить ссылку на репозиторий:
-```
-https://github.com/ilyakabakov/nextbot-lambda-rules.git
-```
+4 Попросить LLM в чате сгененровать скрипт
 
-5 Нажать Done
-
-6 Далее IDE сама будет применять эти правила к python файлам в этом проекте.
+5 IDE сама будет применять эти правила к python файлам в этом проекте.
 
 ## Или можно задать глобально для каждого проекта:
 
@@ -25,10 +20,6 @@ https://github.com/ilyakabakov/nextbot-lambda-rules.git
 
  2 В поле **Rules** нажать **+ NEW**
 
- 3 Выбрать  **Add from GitHub**
+ 3 И скопировать содежимое файла ```nextbot-lambda-func.mdc``` в открывшееся текстовое поле.
 
- Откроется текстовое поле.
-
-4 Скопировать текст из файла nextbot-lambda-func.mdc из репозитория и вставить в поле для текста
-
-5 Нажать Done
+4 Нажать Done
