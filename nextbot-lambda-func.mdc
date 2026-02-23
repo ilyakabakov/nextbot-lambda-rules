@@ -35,11 +35,14 @@ alwaysApply: false
 	- использование datetime.strptime("%m/%d;%Y"), это вызовет ошибку
 	- создание клиента supabase как create_client(supabase_url, supabase_key)
 	- декарация классов
+	- спагетти-код и pyramid of doom
 
-### 2.1 Плоская структура (обязательно, никакого спагетти-кода и pyramid of doom):
-	- **Запрещена вложенность глубже 2 уровней.** Цепочка if  else --> try --> else --> if --> else — недопустима. Если шагов много — выноси их в функции (п.8)
+
+### 2.1 Плоская структура (обязательно):
+	- **Запрещена вложенность глубже 2 уровней.** Цепочка if  else --> try --> else --> if --> else — недопустима. 
+	- Если шагов много — выноси их в функции (п.8)
 	- **Guard clauses:** сначала проверка аргументов/ответа; при ошибке сразу `result = {"status": "error", "message": "..."}` и дальше этот сценарий не продолжать (следующий шаг — отдельным блоком после проверки, без лишнего else)
-	- **Один шаг — один плоский блок.** Схема: «сделали шаг --> если ошибка, то ошибку в result и стоп; иначе следующий шаг» — без вложения следующего шага внутрь else предыдущего
+	- **Один шаг — один плоский блок.** Схема: «сделали шаг --> если ошибка, возвращаем ошибку в result и стоп; если нет то следующий шаг» — без вложения следующего шага внутрь else предыдущего
 	- Код должен читаться **сверху вниз** как последовательность шагов; не «лесенка» из отступов
 
 ### 3. Всегда проверять наличие вложенных дандерметодов из RestrictedPython(
@@ -80,6 +83,7 @@ alwaysApply: false
   - использование исключений для управления логикой выполнения
   - невозможно однозначно определить место возникновения ошибки
 
+### 3.2 В скриптах не использовать распаковку возврата функции в несколько переменных в одном присваивании (например a, b = func())
 
 ### 4. Вместо print() всегда используем debug(text)
 
@@ -96,7 +100,7 @@ alwaysApply: false
 	- повторяющаяся валидация
 	- несколько независимых шагов
 	- один и тот же код вызывается ≥2 раз
-	- 
+	- много конструкций if/else
 
 ### 9. Результат всегда добавляется в словарь result, пример: 
 	- в случае успешного выполнения скрипта:
@@ -114,3 +118,44 @@ alwaysApply: false
 
 		```
 ### 10. Соблюдать DRY и PEP8
+
+
+# Пример структуры(псевдокод):
+```
+# === КОНСТАНТЫ (всегда в начале) ===
+SUPABASE_URL, SUPABASE_KEY, MOYSKLAD_BASE_URL, MOYSKLAD_TOKEN
+
+# === ФУНКЦИИ (одна ответственность) ===
+
+validate_args():
+    если нет args["text"]  → return error_dict
+    если нет args["name"]  → return error_dict
+    если нет args["phone"] → return error_dict
+    return None
+
+search_supabase(q):
+    sb = клиент Supabase
+    попытка: rpc("search", {"q": q})
+    при ошибке → return (None, error_dict)
+    если ответ пустой / нет product_id → return (None, error_dict)
+    return (product_id, None)
+
+create_order_moysklad(product_id, name, phone):
+    headers = авторизация МойСклад
+    GET организация → organization_meta
+    при ошибке / нет организаций → return error_dict
+    POST контрагент (name, phone) → counterparty, agent_meta
+    при ошибке → return error_dict
+    POST заказ (organization_meta, agent_meta, позиция по product_id)
+    при ошибке → return error_dict
+    return success_dict с processed_data
+
+# === ОСНОВНОЙ ПОТОК (без дублирования условия) ===
+result = validate_args()
+если result is None:
+    search_res = search_supabase(args["text"])
+    если search_res[1] не None:
+        result = search_res[1]
+    иначе:
+        result = create_order_moysklad(search_res[0], args["name"], args["phone"])
+```
